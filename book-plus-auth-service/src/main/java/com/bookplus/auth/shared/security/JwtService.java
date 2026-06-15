@@ -34,6 +34,9 @@ public class JwtService {
     private static final String CLAIM_USERNAME = "username";
     private static final String BLACKLIST_PREFIX = "jwt:blacklist:";
 
+    /** SecureRandom es costoso de inicializar; se crea una vez y se reutiliza (thread-safe). */
+    private static final java.security.SecureRandom SECURE_RANDOM = new java.security.SecureRandom();
+
     private final JwtProperties          jwtProperties;
     private final StringRedisTemplate    redisTemplate;
 
@@ -58,7 +61,7 @@ public class JwtService {
 
     public String generateRefreshTokenValue() {
         byte[] bytes = new byte[64];
-        new java.security.SecureRandom().nextBytes(bytes);
+        SECURE_RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 

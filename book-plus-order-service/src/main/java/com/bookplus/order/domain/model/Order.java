@@ -23,6 +23,9 @@ import java.util.*;
 @Getter
 public class Order {
 
+    /** SecureRandom es costoso de inicializar; se crea una sola vez y se reutiliza (thread-safe). */
+    private static final java.security.SecureRandom SECURE_RANDOM = new java.security.SecureRandom();
+
     private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
             OrderStatus.PENDING_PAYMENT,    Set.of(OrderStatus.PAYMENT_PROCESSING, OrderStatus.CANCELLED),
             OrderStatus.PAYMENT_PROCESSING, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
@@ -97,7 +100,7 @@ public class Order {
         order.userEmail = userEmail;
         // Código de entrega solo para envíos físicos (prueba de entrega).
         if ("PHYSICAL".equals(order.deliveryType)) {
-            order.deliveryCode = String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
+            order.deliveryCode = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
         }
         order.registerEvent(new OrderCreatedEvent(
                 order.id.toString(),

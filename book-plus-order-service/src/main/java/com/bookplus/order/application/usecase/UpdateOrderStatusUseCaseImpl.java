@@ -7,8 +7,11 @@ import com.bookplus.order.domain.port.out.*;
 import com.bookplus.order.shared.annotation.UseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
-@UseCase @RequiredArgsConstructor @Slf4j
+// @Transactional a nivel de clase: aplica a los métodos públicos (los que invoca el proxy
+// de Spring desde controladores/consumers). En un método privado no tendría efecto.
+@UseCase @RequiredArgsConstructor @Slf4j @Transactional
 public class UpdateOrderStatusUseCaseImpl implements UpdateOrderStatusUseCase {
 
     private final LoadOrderPort            loadOrderPort;
@@ -79,7 +82,6 @@ public class UpdateOrderStatusUseCaseImpl implements UpdateOrderStatusUseCase {
         return applyAndSave(orderId, order -> order.refund(reason, restock));
     }
 
-    @org.springframework.transaction.annotation.Transactional
     private Order applyAndSave(String orderId, java.util.function.Consumer<Order> transition) {
         Order order = loadOrderPort.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
