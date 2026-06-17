@@ -258,6 +258,14 @@ public class Order {
                             .map(i -> new OrderRefundedEvent.Item(i.getBookId(), i.getQuantity()))
                             .toList()));
         }
+        // Para pedidos digitales, revocar el acceso a la biblioteca (no hay stock que reponer,
+        // pero sí acceso que retirar): así reembolsar no deja al usuario con el libro.
+        if ("DIGITAL".equalsIgnoreCase(this.deliveryType)) {
+            registerEvent(new DigitalAccessRevokedEvent(id.toString(), userId,
+                    items.stream()
+                            .map(i -> new DigitalAccessRevokedEvent.Item(i.getBookId()))
+                            .toList()));
+        }
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────

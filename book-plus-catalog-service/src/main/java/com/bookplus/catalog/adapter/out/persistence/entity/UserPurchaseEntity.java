@@ -25,6 +25,21 @@ public class UserPurchaseEntity {
     @Column(name = "purchased_at", nullable = false)
     private Instant purchasedAt;
 
+    /** false revoca el acceso al PDF (p. ej. tras un reembolso digital). */
+    @Column(name = "active", nullable = false)
+    @Builder.Default
+    private boolean active = true;
+
+    /** true si el usuario llegó a descargar/abrir el libro. */
+    @Column(name = "downloaded", nullable = false)
+    @Builder.Default
+    private boolean downloaded = false;
+
+    /** Porcentaje de lectura registrado (0-100); umbral de "consumido". */
+    @Column(name = "read_progress", nullable = false)
+    @Builder.Default
+    private int readProgress = 0;
+
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class PK implements Serializable {
         private String userId;

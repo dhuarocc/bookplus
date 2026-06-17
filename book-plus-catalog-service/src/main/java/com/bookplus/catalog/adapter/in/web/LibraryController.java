@@ -2,6 +2,7 @@ package com.bookplus.catalog.adapter.in.web;
 
 import com.bookplus.catalog.adapter.in.web.dto.BookResponse;
 import com.bookplus.catalog.adapter.in.web.preview.PdfPreviewService;
+import com.bookplus.catalog.adapter.out.persistence.entity.UserPurchaseEntity;
 import com.bookplus.catalog.adapter.out.persistence.repository.UserPurchaseJpaRepository;
 import com.bookplus.catalog.domain.model.BookId;
 import com.bookplus.catalog.domain.port.out.LoadBookPort;
@@ -38,7 +39,7 @@ public class LibraryController {
     @GetMapping
     @Operation(summary = "List books I purchased")
     public ResponseEntity<ApiResponse<List<BookResponse>>> myLibrary(@AuthenticationPrincipal Jwt jwt) {
-        List<BookResponse> books = purchaseRepo.findByUserIdOrderByPurchasedAtDesc(jwt.getSubject())
+        List<BookResponse> books = purchaseRepo.findByUserIdAndActiveTrueOrderByPurchasedAtDesc(jwt.getSubject())
                 .stream()
                 .map(p -> loadBookPort.findById(BookId.of(p.getBookId().toString())).orElse(null))
                 .filter(Objects::nonNull)
@@ -53,9 +54,19 @@ public class LibraryController {
             @AuthenticationPrincipal Jwt jwt, @PathVariable UUID bookId) {
 
         boolean admin = hasAdminRole(jwt);
-        boolean owner = purchaseRepo.existsByUserIdAndBookId(jwt.getSubject(), bookId);
+        boolean owner = purchaseRepo.existsByUserIdAndBookIdAndActiveTrue(jwt.getSubject(), bookId);
         if (!admin && !owner) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No has comprado este libro");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes acceso a este libro");
+        }
+
+        // Marcar como descargado (relevante para la política de reembolsos de digitales).
+        if (owner) {
+            purchaseRepo.findByUserIdAndBookId(jwt.getSubject(), bookId).ifPresent(p -> {
+                if (!p.isDownloaded()) {
+                    p.setDownloaded(true);
+                    purchaseRepo.save(p);
+                }
+            });
         }
 
         return previewService.getPreview(bookId)
@@ -68,6 +79,27 @@ public class LibraryController {
                         .cacheControl(CacheControl.noCache())
                         .body(p.getFullPdf()))
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @PutMapping("/{bookId}/progress")
+    @Operation(summary = "Report reading progress (0-100) for a purchased book")
+    public ResponseEntity<ApiResponse<Integer>> updateProgress(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID bookId,
+            @RequestParam("percent") int percent) {
+
+        int clamped = Math.max(0, Math.min(100, percent));
+        UserPurchaseEntity purchase = purchaseRepo
+                .findByUserIdAndBookId(jwt.getSubject(), bookId)
+                .filter(UserPurchaseEntity::isActive)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes acceso a este libro"));
+
+        // El progreso solo avanza (evita que un reset baje el umbral de "consumido").
+        if (clamped > purchase.getReadProgress()) {
+            purchase.setReadProgress(clamped);
+            purchase.setDownloaded(true);
+            purchaseRepo.save(purchase);
+        }
+        return ResponseEntity.ok(ApiResponse.ok(purchase.getReadProgress()));
     }
 
     @SuppressWarnings("unchecked")

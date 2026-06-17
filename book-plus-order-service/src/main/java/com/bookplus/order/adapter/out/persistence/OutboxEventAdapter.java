@@ -31,7 +31,8 @@ public class OutboxEventAdapter implements OutboxEventPublisherPort {
             OrderCancelledEvent.class,          "order.cancelled",
             OrderStatusChangedEvent.class,      "order.status.changed",
             OrderPaymentConfirmedEvent.class,   "order.payment.confirmed",
-            OrderRefundedEvent.class,           "order.refunded"
+            OrderRefundedEvent.class,           "order.refunded",
+            DigitalAccessRevokedEvent.class,    "order.access.revoked"
     );
 
     @Override

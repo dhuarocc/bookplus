@@ -21,9 +21,10 @@ public class KafkaEventPublisherAdapter implements DomainEventPublisherPort {
     private final ObjectMapper                  objectMapper;
 
     private static final Map<Class<?>, String> TOPICS = Map.of(
-            OrderCreatedEvent.class,       "order.created",
-            OrderCancelledEvent.class,     "order.cancelled",
-            OrderStatusChangedEvent.class, "order.status.changed"
+            OrderCreatedEvent.class,         "order.created",
+            OrderCancelledEvent.class,       "order.cancelled",
+            OrderStatusChangedEvent.class,   "order.status.changed",
+            DigitalAccessRevokedEvent.class, "order.access.revoked"
     );
 
     @Override

@@ -8,13 +8,40 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 /** Valida cupones y calcula el descuento sobre un importe. */
 @Service
 @RequiredArgsConstructor
 public class CouponService {
 
+    /** Validez por defecto del crédito en tienda emitido como alternativa al reembolso. */
+    private static final long STORE_CREDIT_VALID_DAYS = 365;
+
     private final CouponJpaRepository repository;
+
+    /**
+     * Emite un crédito en tienda como alternativa al reembolso en efectivo: crea un cupón
+     * FIXED por el importe indicado y devuelve su código. Se usa cuando la política decide
+     * STORE_CREDIT (p. ej. un libro digital ya consumido dentro de la ventana).
+     */
+    public String issueStoreCredit(BigDecimal amount) {
+        BigDecimal value = scale(amount == null ? BigDecimal.ZERO : amount);
+        if (value.signum() <= 0) {
+            throw new IllegalArgumentException("El importe del crédito debe ser positivo");
+        }
+        String code = "CREDIT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        repository.save(CouponEntity.builder()
+                .code(code)
+                .discountType("FIXED")
+                .discountValue(value)
+                .active(true)
+                .expiresAt(Instant.now().plus(STORE_CREDIT_VALID_DAYS, ChronoUnit.DAYS))
+                .createdAt(Instant.now())
+                .build());
+        return code;
+    }
 
     public CouponResult evaluate(String code, BigDecimal amount) {
         if (code == null || code.isBlank()) {
