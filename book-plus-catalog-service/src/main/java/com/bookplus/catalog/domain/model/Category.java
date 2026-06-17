@@ -39,8 +39,9 @@ public class Category {
 
     public static Category create(String name, String description,
                                   CategoryId parentId, String imageUrl) {
+        String validName = validateName(name);   // valida ANTES de generar el slug
         Instant now = Instant.now();
-        return new Category(CategoryId.generate(), name, Slug.from(name),
+        return new Category(CategoryId.generate(), validName, Slug.from(validName),
                 description, parentId, imageUrl, true, now, now);
     }
 
