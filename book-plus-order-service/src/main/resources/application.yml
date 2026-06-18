@@ -3,6 +3,9 @@ server:
   shutdown: graceful
 
 spring:
+  threads:
+    virtual:
+      enabled: true   # Java 21 — virtual threads (Project Loom)
   application:
     name: order-service
 

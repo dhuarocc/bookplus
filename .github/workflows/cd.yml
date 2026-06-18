@@ -15,6 +15,7 @@ on:
 permissions:
   contents: read
   packages: write   # necesario para publicar imágenes en GHCR
+  id-token: write   # firma keyless de imágenes con Cosign (OIDC)
 
 jobs:
   # ── 1) Construir y publicar imágenes en GHCR ───────────────────────────────
@@ -57,6 +58,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push (amd64 + arm64)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
@@ -69,6 +71,14 @@ jobs:
             ghcr.io/${{ steps.owner.outputs.owner }}/${{ matrix.image }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Firma de imágenes (Sigstore/Cosign, keyless con OIDC de GitHub) — anti-tampering.
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Sign image
+        run: |
+          cosign sign --yes \
+            ghcr.io/${{ steps.owner.outputs.owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
 
   # ── 2) Desplegar por SSH (opcional) ────────────────────────────────────────
   deploy:

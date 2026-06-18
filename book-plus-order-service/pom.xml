@@ -143,6 +143,17 @@
             <version>4.6.14</version>
             <scope>test</scope>
         </dependency>
+        <!-- ShedLock — bloqueo distribuido de tareas @Scheduled (HA multi-réplica). -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+            <version>5.16.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+            <version>5.16.0</version>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>

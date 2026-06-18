@@ -4,6 +4,7 @@ import com.bookplus.order.adapter.out.persistence.entity.OutboxEventEntity;
 import com.bookplus.order.adapter.out.persistence.repository.OutboxEventJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -37,6 +38,7 @@ public class OutboxRelay {
     private final KafkaTemplate<String, String>  kafkaTemplate;
 
     @Scheduled(fixedDelayString = "${order.outbox.poll-ms:5000}")
+    @SchedulerLock(name = "outboxRelay", lockAtMostFor = "PT4M", lockAtLeastFor = "PT1S")
     @Transactional
     public void publishPendingEvents() {
         List<OutboxEventEntity> pending = repository.findByStatusOrderByCreatedAtAsc(

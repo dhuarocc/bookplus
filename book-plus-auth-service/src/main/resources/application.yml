@@ -4,6 +4,9 @@ server:
     include-message: never   # no exponer stacktrace en producción
 
 spring:
+  threads:
+    virtual:
+      enabled: true   # Java 21 — virtual threads (Project Loom)
   application:
     name: auth-service
 

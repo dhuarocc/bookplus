@@ -1,0 +1,70 @@
+name: Security
+
+# Seguridad de cadena de suministro: SBOM, escaneo de vulnerabilidades (filesystem)
+# y análisis de dependencias OWASP. Corre en push a main, en PRs y semanalmente.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"   # lunes 06:00
+
+permissions:
+  contents: read
+  security-events: write   # para subir SARIF a la pestaña Security
+
+jobs:
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generar SBOM del repositorio
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: bookplus-sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: bookplus-sbom.cdx.json
+
+  trivy:
+    name: Trivy (vulnerabilidades + secretos)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: "0"        # no rompe el build; sube los hallazgos a Security
+      - name: Subir resultados a GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+  dependency-check:
+    name: OWASP Dependency-Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: bookplus
+          path: .
+          format: HTML
+          args: >-
+            --failOnCVSS 11
+            --enableRetired
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: reports

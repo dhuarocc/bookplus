@@ -1,0 +1,50 @@
+version: 2
+updates:
+  # ── Backend (Maven), uno por microservicio ────────────────────────────────
+  - package-ecosystem: maven
+    directory: "/book-plus-auth-service"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: "/book-plus-catalog-service"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: "/book-plus-inventory-service"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: "/book-plus-cart-service"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: "/book-plus-order-service"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: "/book-plus-payment-service"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: "/book-plus-notification-service"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: "/book-plus-report-service"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: maven
+    directory: "/book-plus-api-gateway"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+
+  # ── Frontend (npm) ─────────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: "/book-plus-frontend"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+
+  # ── GitHub Actions ─────────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }
