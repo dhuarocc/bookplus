@@ -34,7 +34,7 @@ public class PaymentPersistenceAdapter implements LoadPaymentPort, SavePaymentPo
     // ── Mapping ───────────────────────────────────────────────────────────
 
     private Payment toDomain(PaymentEntity e) {
-        return Payment.reconstitute(
+        Payment payment = Payment.reconstitute(
                 PaymentId.of(e.getId()),
                 e.getOrderId(),
                 e.getUserId(),
@@ -46,11 +46,14 @@ public class PaymentPersistenceAdapter implements LoadPaymentPort, SavePaymentPo
                 e.getCreatedAt(),
                 e.getUpdatedAt()
         );
+        payment.assignPersistenceVersion(e.getVersion());
+        return payment;
     }
 
     private PaymentEntity toEntity(Payment p) {
         return PaymentEntity.builder()
                 .id(p.getId().value())
+                .version(p.getVersion())
                 .orderId(p.getOrderId())
                 .userId(p.getUserId())
                 .status(p.getStatus())

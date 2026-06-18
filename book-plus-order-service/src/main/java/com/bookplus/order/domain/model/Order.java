@@ -60,8 +60,12 @@ public class Order {
     private       String          claimResolution; // nota de resolución del admin
     private       Instant         createdAt;
     private       Instant         updatedAt;
+    private       Long            version;          // bloqueo optimista (lo gestiona JPA)
 
     private final List<DomainEvent> domainEvents = new ArrayList<>();
+
+    /** Lo usa el adaptador de persistencia para preservar la versión de bloqueo optimista. */
+    public void assignPersistenceVersion(Long version) { this.version = version; }
 
     // ── Factory ───────────────────────────────────────────────────────────
 

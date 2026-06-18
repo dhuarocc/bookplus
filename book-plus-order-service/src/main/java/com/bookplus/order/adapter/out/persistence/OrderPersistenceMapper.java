@@ -31,7 +31,7 @@ public class OrderPersistenceMapper {
                 e.getShippingCountry()
         );
 
-        return Order.reconstitute(
+        Order order = Order.reconstitute(
                 OrderId.of(e.getId()),
                 e.getUserId(),
                 e.getCartId(),
@@ -57,11 +57,14 @@ public class OrderPersistenceMapper {
                 e.getUpdatedAt(),
                 e.getUserEmail()
         );
+        order.assignPersistenceVersion(e.getVersion());
+        return order;
     }
 
     public OrderEntity toEntity(Order order) {
         OrderEntity entity = OrderEntity.builder()
                 .id(order.getId().value())
+                .version(order.getVersion())
                 .userId(order.getUserId())
                 .userEmail(order.getUserEmail())
                 .cartId(order.getCartId())

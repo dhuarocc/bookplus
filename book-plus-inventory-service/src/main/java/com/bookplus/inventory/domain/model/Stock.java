@@ -30,8 +30,14 @@ public class Stock {
     private int            lowStockThreshold;  // umbral para alertas
     private final Instant  createdAt;
     private Instant        updatedAt;
+    private Long           version;             // bloqueo optimista (lo gestiona JPA)
 
     private final List<DomainEvent> domainEvents = new ArrayList<>();
+
+    public Long getVersion() { return version; }
+
+    /** Lo usa el adaptador de persistencia para preservar la versión de bloqueo optimista. */
+    public void assignPersistenceVersion(Long version) { this.version = version; }
 
     // ── Constructor privado ───────────────────────────────────────────────
 

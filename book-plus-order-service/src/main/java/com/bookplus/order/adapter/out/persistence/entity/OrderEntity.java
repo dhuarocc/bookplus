@@ -17,6 +17,12 @@ public class OrderEntity {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
+    /** Bloqueo optimista: Hibernate incrementa esta columna en cada update y detecta
+        escrituras concurrentes (lanza OptimisticLockException si dos saves chocan). */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(name = "user_id", nullable = false)
     private String userId;
 

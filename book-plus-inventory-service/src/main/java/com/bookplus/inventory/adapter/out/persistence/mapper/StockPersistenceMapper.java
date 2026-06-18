@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class StockPersistenceMapper {
 
     public Stock toDomain(StockEntity e) {
-        return Stock.reconstitute(
+        Stock stock = Stock.reconstitute(
                 StockId.of(e.getId()),
                 BookId.of(e.getBookId()),
                 e.getQuantityTotal(),
@@ -18,11 +18,14 @@ public class StockPersistenceMapper {
                 e.getCreatedAt(),
                 e.getUpdatedAt()
         );
+        stock.assignPersistenceVersion(e.getVersion());
+        return stock;
     }
 
     public StockEntity toEntity(Stock s) {
         return StockEntity.builder()
                 .id(s.getId().value())
+                .version(s.getVersion())
                 .bookId(s.getBookId().value())
                 .quantityTotal(s.getQuantityTotal())
                 .quantityAvailable(s.getQuantityAvailable())

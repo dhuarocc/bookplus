@@ -18,6 +18,11 @@ public class PaymentEntity {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
+    /** Bloqueo optimista: detecta actualizaciones concurrentes del mismo pago. */
+    @jakarta.persistence.Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(name = "order_id", nullable = false, unique = true)
     private String orderId;
 

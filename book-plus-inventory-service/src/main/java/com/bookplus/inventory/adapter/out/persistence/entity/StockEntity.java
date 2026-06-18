@@ -22,6 +22,11 @@ public class StockEntity {
     @Column(nullable = false, updatable = false)
     private UUID id;
 
+    /** Bloqueo optimista: detecta reservas/ajustes de stock concurrentes (evita overselling). */
+    @jakarta.persistence.Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(name = "book_id", nullable = false, unique = true, updatable = false)
     private UUID bookId;
 
