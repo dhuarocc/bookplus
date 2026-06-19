@@ -192,8 +192,8 @@
         <!-- Chaos Monkey — inyecta fallos/latencia (solo con el perfil "chaos") para validar resiliencia. -->
         <dependency>
             <groupId>de.codecentric</groupId>
-            <artifactId>chaos-monkey-spring-boot-starter</artifactId>
-            <version>3.1.0</version>
+            <artifactId>chaos-monkey-spring-boot</artifactId>
+            <version>3.1.2</version>
         </dependency>
     </dependencies>
 
