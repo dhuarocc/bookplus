@@ -29,6 +29,8 @@
         <!-- Generado (Lombok/DTOs) y arranque: fuera de la cobertura para no distorsionar. -->
         <sonar.exclusions>**/dto/**,**/config/**,**/*Application.java</sonar.exclusions>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <!-- Grupos JUnit excluidos del `mvn test`. Para correr los IT: -Dexcluded.groups= -->
+        <excluded.groups>integration</excluded.groups>
     </properties>
 
     <dependencies>
@@ -154,10 +156,33 @@
             <artifactId>shedlock-provider-jdbc-template</artifactId>
             <version>5.16.0</version>
         </dependency>
+        <!-- Hibernate Envers — audit trail / historial de cambios por entidad. -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-envers</artifactId>
+        </dependency>
+        <!-- Testcontainers — test de integración del audit trail (perfil integration). -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>1.20.2</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
@@ -170,6 +195,15 @@
 
     <build>
         <plugins>
+            <!-- Excluye los tests @Tag("integration") del `mvn test` normal.
+                 Se ejecutan aparte con: mvn test -Dgroups=integration (requiere Docker). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>${excluded.groups}</excludedGroups>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

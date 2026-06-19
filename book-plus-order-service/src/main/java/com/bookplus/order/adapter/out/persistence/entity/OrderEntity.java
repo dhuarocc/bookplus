@@ -3,6 +3,8 @@ package com.bookplus.order.adapter.out.persistence.entity;
 import com.bookplus.order.domain.model.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,6 +13,7 @@ import java.util.*;
 @Entity
 @Table(name = "orders")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Audited   // Hibernate Envers: registra cada cambio del pedido en orders_aud (audit trail)
 public class OrderEntity {
 
     @Id
@@ -111,5 +114,6 @@ public class OrderEntity {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
+    @NotAudited   // las líneas son inmutables tras la compra; auditamos solo la cabecera del pedido
     private List<OrderItemEntity> items = new ArrayList<>();
 }
