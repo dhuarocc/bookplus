@@ -4,6 +4,8 @@ import com.bookplus.cart.adapter.in.web.dto.*;
 import com.bookplus.cart.domain.model.*;
 import com.bookplus.cart.domain.port.in.*;
 import com.bookplus.cart.shared.annotation.WebAdapter;
+import com.bookplus.cart.shared.idempotency.IdempotencyService;
+import org.springframework.http.HttpStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +32,7 @@ public class CartController {
     private final UpdateItemQuantityUseCase updateQuantityUseCase;
     private final ClearCartUseCase          clearCartUseCase;
     private final CheckoutCartUseCase       checkoutCartUseCase;
+    private final IdempotencyService         idempotency;
 
     // ── GET /api/v1/cart ──────────────────────────────────────────────────
 
@@ -101,6 +104,7 @@ public class CartController {
     @Operation(summary = "Checkout the cart — publishes CartCheckedOutEvent consumed by order-service")
     public ResponseEntity<Void> checkout(
             @AuthenticationPrincipal Jwt jwt,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CheckoutRequest req
     ) {
         if (req.isPhysical() && req.shippingAddress() == null) {
@@ -108,9 +112,29 @@ public class CartController {
                     org.springframework.http.HttpStatus.BAD_REQUEST,
                     "La dirección de envío es obligatoria para entrega física");
         }
-        String email = jwt.getClaimAsString("email");
-        checkoutCartUseCase.checkout(jwt.getSubject(), email, req.toShippingAddressDto(),
-                req.paymentMethod(), req.deliveryType(), req.couponCode());
+        String userId = jwt.getSubject();
+
+        // Idempotencia (estilo Stripe): si el cliente reintenta el mismo checkout con la
+        // misma Idempotency-Key, no se vuelve a procesar (evita pedidos/cargos duplicados).
+        boolean withKey = idempotencyKey != null && !idempotencyKey.isBlank();
+        if (withKey) {
+            switch (idempotency.begin(userId, idempotencyKey)) {
+                case REPLAY      -> { return ResponseEntity.accepted().build(); }  // ya procesado
+                case IN_PROGRESS -> { return ResponseEntity.status(HttpStatus.CONFLICT).build(); }
+                case PROCEED     -> { /* seguir */ }
+            }
+        }
+
+        try {
+            String email = jwt.getClaimAsString("email");
+            checkoutCartUseCase.checkout(userId, email, req.toShippingAddressDto(),
+                    req.paymentMethod(), req.deliveryType(), req.couponCode());
+        } catch (RuntimeException ex) {
+            if (withKey) idempotency.cancel(userId, idempotencyKey); // liberar para reintentar
+            throw ex;
+        }
+
+        if (withKey) idempotency.complete(userId, idempotencyKey);
         return ResponseEntity.accepted().build();
     }
 }
