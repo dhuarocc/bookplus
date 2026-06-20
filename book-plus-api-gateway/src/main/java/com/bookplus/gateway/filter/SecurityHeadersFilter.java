@@ -13,20 +13,15 @@ import reactor.core.publisher.Mono;
  * Runs on every response before it is sent back to the client.
  *
  * Headers added:
- *  - X-Content-Type-Options: nosniff
- *      Prevents MIME-type sniffing attacks.
- *  - X-Frame-Options: DENY
- *      Prevents clickjacking via iframes.
- *  - X-XSS-Protection: 1; mode=block
- *      Legacy XSS protection (modern browsers rely on CSP).
- *  - Strict-Transport-Security
- *      Forces HTTPS for 1 year; enable includeSubDomains in production.
- *  - Referrer-Policy: strict-origin-when-cross-origin
- *      Controls how much referrer info is sent.
- *  - Content-Security-Policy
- *      Basic CSP — tighten for production to restrict allowed origins.
- *  - Permissions-Policy
- *      Disables dangerous browser features (camera, geolocation, etc.).
+ *  - X-Content-Type-Options: nosniff       (evita MIME-sniffing)
+ *  - X-Frame-Options: DENY                 (evita clickjacking en iframes)
+ *  - X-XSS-Protection: 1; mode=block       (protección XSS heredada; lo moderno es CSP)
+ *  - Strict-Transport-Security             (fuerza HTTPS durante 1 año)
+ *  - Referrer-Policy                       (limita la info de referrer)
+ *  - Content-Security-Policy               (restringe orígenes de recursos)
+ *  - Permissions-Policy                    (desactiva APIs sensibles del navegador)
+ *  - Cross-Origin-Opener-Policy / -Resource-Policy  (aislamiento entre orígenes)
+ *  - X-Permitted-Cross-Domain-Policies     (bloquea políticas cross-domain heredadas)
  */
 @Component
 public class SecurityHeadersFilter implements GlobalFilter, Ordered {
@@ -49,9 +44,13 @@ public class SecurityHeadersFilter implements GlobalFilter, Ordered {
             headers.set("Permissions-Policy",
                     "camera=(), microphone=(), geolocation=(), payment=()");
 
+            // Cross-origin isolation (OWASP) — aísla la app de otros orígenes/popups.
+            headers.set("Cross-Origin-Opener-Policy",   "same-origin");
+            headers.set("Cross-Origin-Resource-Policy", "same-origin");
+            // Bloquea políticas cross-domain heredadas (Flash/PDF antiguos).
+            headers.set("X-Permitted-Cross-Domain-Policies", "none");
+
             // Content Security Policy
-            // default-src 'self' — only load resources from same origin
-            // script-src includes 'unsafe-inline' for Swagger UI (remove in prod for stricter policy)
             headers.set("Content-Security-Policy",
                     "default-src 'self'; " +
                     "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; " +
