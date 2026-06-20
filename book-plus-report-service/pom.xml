@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.4</version>
+        <version>3.5.15</version>
         <relativePath/>
     </parent>
 
@@ -19,9 +19,9 @@
 
     <properties>
         <java.version>21</java.version>
-        <opencsv.version>5.9</opencsv.version>
+        <opencsv.version>5.12.0</opencsv.version>
         <itext.version>8.0.4</itext.version>
-        <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <spring-cloud.version>2023.0.6</spring-cloud.version>
     </properties>
 
     <dependencies>
