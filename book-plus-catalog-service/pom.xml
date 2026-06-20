@@ -206,6 +206,11 @@
             <artifactId>togglz-console</artifactId>
             <version>4.4.0</version>
         </dependency>
+        <!-- Caffeine — caché en proceso (L1) delante de Redis (L2). Versión gestionada por Spring Boot. -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
