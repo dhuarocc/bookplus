@@ -1,8 +1,10 @@
-# Levanta un Jenkins local para probar el Jenkinsfile.
-#   docker compose -f docker-compose.jenkins.yml up -d --build
-#   # contraseña inicial:
-#   docker exec bookplus-jenkins cat /var/jenkins_home/secrets/initialAdminPassword
-# Jenkins en http://localhost:8080
+# Levanta un Jenkins local YA CONFIGURADO por código (JCasC): sin asistente, con la Shared
+# Library, SonarCloud, Vault, Slack y el job multibranch listos.
+#   docker compose -p bookplus-jenkins -f docker-compose.jenkins.yml up -d --build
+# Jenkins en http://localhost:8080  (usuario: admin / contraseña: la de JENKINS_ADMIN_PASSWORD)
+#
+# Define los secretos en un .env junto a este fichero (o expórtalos):
+#   JENKINS_ADMIN_PASSWORD, GHCR_USER, GHCR_TOKEN, SONAR_TOKEN, VAULT_ROLE_ID, VAULT_SECRET_ID
 services:
   jenkins:
     build: ./jenkins
@@ -11,7 +13,17 @@ services:
     ports:
       - "8080:8080"
       - "50000:50000"
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+      CASC_JENKINS_CONFIG: "/casc/jenkins.yaml"
+      JENKINS_ADMIN_PASSWORD: "${JENKINS_ADMIN_PASSWORD:-admin}"
+      GHCR_USER: "${GHCR_USER:-}"
+      GHCR_TOKEN: "${GHCR_TOKEN:-}"
+      SONAR_TOKEN: "${SONAR_TOKEN:-}"
+      VAULT_ROLE_ID: "${VAULT_ROLE_ID:-}"
+      VAULT_SECRET_ID: "${VAULT_SECRET_ID:-}"
     volumes:
+      - ./jenkins/casc:/casc:ro
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped

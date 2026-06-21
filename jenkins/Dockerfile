@@ -13,6 +13,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 USER jenkins
+ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
 
 # Plugins necesarios preinstalados.
 RUN jenkins-plugin-cli --plugins \
@@ -21,4 +22,13 @@ RUN jenkins-plugin-cli --plugins \
     git \
     credentials-binding \
     junit \
-    pipeline-stage-view
+    pipeline-stage-view \
+    ansicolor \
+    ws-cleanup \
+    sonar \
+    configuration-as-code \
+    job-dsl \
+    hashicorp-vault-plugin \
+    slack \
+    email-ext \
+    pipeline-utility-steps

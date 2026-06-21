@@ -1,0 +1,111 @@
+# ============================================================================
+# Jenkins Configuration as Code (JCasC) — configuración de Jenkins como código.
+# Arranca un Jenkins REPRODUCIBLE: sin asistente, con seguridad, credenciales, la Shared
+# Library, SonarCloud y el job multibranch ya configurados. Los secretos llegan por
+# variables de entorno (no se hardcodean) — ver docker-compose.jenkins.yml.
+#
+# Nota: Vault y Slack se dejan como configuración OPCIONAL (ver el bloque comentado al final
+# y JENKINS-EXPERT.md). Sus plugins están instalados; basta añadir aquí la credencial y el
+# bloque 'unclassified' correspondientes cuando tengas un Vault/Slack reales. Se omiten del
+# arranque por defecto para que JCasC no falle si esas credenciales no existen.
+# ============================================================================
+jenkins:
+  systemMessage: "BookPlus CI — configurado como código (JCasC)"
+  numExecutors: 2
+  mode: NORMAL
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD:-admin}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: "ghcr"
+              username: "${GHCR_USER:-changeme}"
+              password: "${GHCR_TOKEN:-changeme}"
+              description: "GitHub Container Registry (write:packages)"
+          - string:
+              scope: GLOBAL
+              id: "sonar-token"
+              secret: "${SONAR_TOKEN:-changeme}"
+              description: "Token de SonarCloud"
+
+unclassified:
+  globalLibraries:
+    libraries:
+      - name: "bookplus-shared-lib"
+        defaultVersion: "main"
+        implicit: false
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "https://github.com/dhuarocc/bookplus-jenkins-shared-lib.git"
+  sonarGlobalConfiguration:
+    buildWrapperEnabled: true
+    installations:
+      - name: "SonarCloud"
+        serverUrl: "https://sonarcloud.io"
+        credentialsId: "sonar-token"
+
+jobs:
+  - script: >
+      multibranchPipelineJob('bookplus') {
+        displayName('BookPlus — Multibranch')
+        branchSources {
+          git {
+            id('bookplus-repo')
+            remote('https://github.com/dhuarocc/bookplus.git')
+          }
+        }
+        factory {
+          workflowBranchProjectFactory {
+            scriptPath('Jenkinsfile')
+          }
+        }
+        orphanedItemStrategy {
+          discardOldItems {
+            numToKeep(10)
+          }
+        }
+        triggers {
+          periodicFolderTrigger {
+            interval('1d')
+          }
+        }
+      }
+
+# ----------------------------------------------------------------------------
+# OPCIONAL — Vault y Slack. Descomenta y ajusta cuando tengas un Vault/Slack reales.
+# (El plugin hashicorp-vault-plugin y slack ya están instalados.)
+#
+# credentials:
+#   system:
+#     domainCredentials:
+#       - credentials:
+#           - vaultAppRoleCredential:
+#               scope: GLOBAL
+#               id: "vault-approle"
+#               roleId: "${VAULT_ROLE_ID}"
+#               secretId: "${VAULT_SECRET_ID}"
+#               path: "approle"
+#
+# unclassified:
+#   hashicorpVault:
+#     configuration:
+#       vaultUrl: "http://vault:8200"
+#       vaultCredentialId: "vault-approle"
+#       engineVersion: 2
+#   slackNotifier:
+#     teamDomain: "bookplus"
+#     tokenCredentialId: "slack-token"
+# ----------------------------------------------------------------------------

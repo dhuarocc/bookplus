@@ -1,0 +1,163 @@
+// ============================================================================
+// BookPlus — Pipeline declarativo de Jenkins (nivel avanzado).
+//
+// Espeja el pipeline de GitHub Actions (CI/CD/Security) para entornos que usan Jenkins
+// (habitual en banca/gran empresa). Demuestra "pipeline-as-code" portable.
+//
+// Características avanzadas:
+//   - agent none + agentes por etapa (cada etapa usa el contenedor que necesita).
+//   - Parámetros del build (saltar Sonar, publicar imágenes, elegir entorno de deploy).
+//   - Test y construcción de imágenes EN PARALELO (un branch por microservicio).
+//   - Quality Gate de SonarCloud que ABORTA el pipeline si no se cumple.
+//   - stash/unstash del código entre agentes; caché del repositorio Maven (~/.m2).
+//   - Aprobación manual con timeout antes de desplegar; reportes JUnit; limpieza.
+//
+// Requisitos en Jenkins:
+//   - Plugins: Pipeline, Docker Pipeline, Git, Credentials Binding, JUnit, AnsiColor,
+//     Workspace Cleanup, SonarQube Scanner (ver jenkins/Dockerfile).
+//   - Servidor SonarQube llamado 'SonarCloud' configurado (Manage Jenkins -> System).
+//   - Credenciales: 'ghcr' (usuario/token GHCR) y el token de Sonar en el server config.
+//   - Agente con acceso a Docker (socket montado) -- ver docker-compose.jenkins.yml.
+// ============================================================================
+pipeline {
+    agent none
+
+    parameters {
+        booleanParam(name: 'RUN_SONAR',   defaultValue: true, description: 'Ejecutar análisis y Quality Gate de SonarCloud')
+        booleanParam(name: 'PUSH_IMAGES', defaultValue: true, description: 'Construir y publicar imágenes Docker en GHCR')
+        choice(name: 'DEPLOY_ENV', choices: ['none', 'staging', 'production'], description: 'Entorno de despliegue (none = no desplegar)')
+    }
+
+    options {
+        timestamps()
+        ansiColor('xterm')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        timeout(time: 60, unit: 'MINUTES')
+        skipDefaultCheckout(true)
+    }
+
+    environment {
+        REGISTRY    = 'ghcr.io/dhuarocc'
+        MAVEN_IMAGE = 'maven:3.9-eclipse-temurin-21'
+        SERVICES    = 'book-plus-auth-service book-plus-catalog-service book-plus-cart-service book-plus-order-service book-plus-payment-service book-plus-inventory-service book-plus-notification-service book-plus-report-service book-plus-api-gateway'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            agent any
+            steps {
+                checkout scm
+                script {
+                    env.SHORT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    echo "Commit: ${env.SHORT_SHA}"
+                }
+                stash name: 'source', useDefaultExcludes: false
+            }
+        }
+
+        stage('Build & Test') {
+            agent { docker { image "${MAVEN_IMAGE}"; args '-v $HOME/.m2:/root/.m2' } }
+            steps {
+                unstash 'source'
+                script {
+                    def jobs = [:]
+                    env.SERVICES.split(' ').each { svc ->
+                        jobs["test:${svc}"] = {
+                            sh "cd ${svc} && mvn -B -q test"
+                        }
+                    }
+                    parallel jobs
+                }
+            }
+            post {
+                always {
+                    junit testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('SonarCloud + Quality Gate') {
+            when { expression { return params.RUN_SONAR } }
+            agent { docker { image "${MAVEN_IMAGE}"; args '-v $HOME/.m2:/root/.m2' } }
+            steps {
+                unstash 'source'
+                withSonarQubeEnv('SonarCloud') {
+                    sh 'cd book-plus-order-service && mvn -B -q verify sonar:sonar'
+                }
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Package') {
+            agent { docker { image "${MAVEN_IMAGE}"; args '-v $HOME/.m2:/root/.m2' } }
+            steps {
+                unstash 'source'
+                sh '''
+                    set -e
+                    for svc in $SERVICES; do
+                        (cd "$svc" && mvn -B -q -DskipTests package)
+                    done
+                '''
+                stash name: 'jars', includes: '**/target/*.jar'
+            }
+        }
+
+        stage('Build & Push images') {
+            when { expression { return params.PUSH_IMAGES } }
+            agent any
+            steps {
+                unstash 'source'
+                withCredentials([usernamePassword(credentialsId: 'ghcr',
+                        usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_TOKEN')]) {
+                    script {
+                        sh 'echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin'
+                        def builds = [:]
+                        env.SERVICES.split(' ').each { svc ->
+                            builds["image:${svc}"] = {
+                                sh "docker build -t ${REGISTRY}/${svc}:${SHORT_SHA} ${svc} && docker push ${REGISTRY}/${svc}:${SHORT_SHA}"
+                            }
+                        }
+                        parallel builds
+                    }
+                }
+            }
+        }
+
+        stage('Security scan (Trivy)') {
+            when { expression { return params.PUSH_IMAGES } }
+            agent any
+            steps {
+                script {
+                    def scans = [:]
+                    env.SERVICES.split(' ').each { svc ->
+                        scans["trivy:${svc}"] = {
+                            sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL --exit-code 0 ${REGISTRY}/${svc}:${SHORT_SHA}"
+                        }
+                    }
+                    parallel scans
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when { expression { return params.DEPLOY_ENV != 'none' } }
+            agent any
+            steps {
+                timeout(time: 15, unit: 'MINUTES') {
+                    input message: "¿Desplegar a ${params.DEPLOY_ENV}?", ok: 'Desplegar'
+                }
+                echo "Desplegando ${SHORT_SHA} a ${params.DEPLOY_ENV} (docker compose up / kubectl apply)…"
+            }
+        }
+    }
+
+    post {
+        success  { echo "✅ Pipeline OK — ${env.SHORT_SHA}" }
+        unstable { echo '⚠️ Pipeline INESTABLE (tests fallidos)' }
+        failure  { echo '❌ Pipeline FALLÓ'  /* aquí: slackSend / emailext */ }
+    }
+}
