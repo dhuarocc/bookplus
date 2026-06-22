@@ -7,6 +7,7 @@
 @Library('bookplus-shared-lib@main') _
 
 bookplusPipeline(
-    registry:   'ghcr.io/dhuarocc',
-    mavenImage: 'maven:3.9-eclipse-temurin-21'
+    registry:          'ghcr.io/bookplus-org',
+    mavenImage:        'maven:3.9-eclipse-temurin-21',
+    ghcrCredentialsId: 'github-app'   // tokens efímeros de 1h (GitHub App). PAT: usar 'ghcr'
 )

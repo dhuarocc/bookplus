@@ -38,6 +38,17 @@ credentials:
               id: "sonar-token"
               secret: "${SONAR_TOKEN:-changeme}"
               description: "Token de SonarCloud"
+          # --- Credencial PROFESIONAL para GHCR/SCM: GitHub App (tokens efímeros de 1h) ---
+          # Boot-safe: appID y key tienen valor por defecto, así Jenkins arranca aunque aún
+          # no hayas creado la App. La key se monta como archivo (ver docker-compose.jenkins.yml):
+          # por defecto apunta a github-app.pem.example (dummy válido); cuando configures
+          # GITHUB_APP_KEY_FILE en el .env, se monta tu key real (que vive FUERA del repo).
+          - gitHubApp:
+              scope: GLOBAL
+              id: "github-app"
+              appID: "${GITHUB_APP_ID:-000000}"
+              privateKey: "${readFile:/run/secrets/github-app.pem}"
+              description: "GitHub App — acuña tokens efímeros (1h) para GHCR/SCM"
 
 unclassified:
   globalLibraries:
@@ -64,7 +75,7 @@ jobs:
         branchSources {
           git {
             id('bookplus-repo')
-            remote('https://github.com/dhuarocc/bookplus.git')
+            remote('https://github.com/bookplus-org/bookplus.git')
           }
         }
         factory {
@@ -108,4 +119,4 @@ jobs:
 #   slackNotifier:
 #     teamDomain: "bookplus"
 #     tokenCredentialId: "slack-token"
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------

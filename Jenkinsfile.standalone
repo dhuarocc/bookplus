@@ -38,7 +38,7 @@ pipeline {
     }
 
     environment {
-        REGISTRY    = 'ghcr.io/dhuarocc'
+        REGISTRY    = 'ghcr.io/bookplus-org'
         MAVEN_IMAGE = 'maven:3.9-eclipse-temurin-21'
         SERVICES    = 'book-plus-auth-service book-plus-catalog-service book-plus-cart-service book-plus-order-service book-plus-payment-service book-plus-inventory-service book-plus-notification-service book-plus-report-service book-plus-api-gateway'
     }
